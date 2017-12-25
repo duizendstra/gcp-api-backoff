@@ -1,0 +1,26 @@
+{
+    "name": "gcp-api-backoff",
+    "version": "0.1.0",
+    "description": "No dependencies back-off for the Google Cloud Platform ",
+    "main": "index.js",
+    "dependencies": {},
+    "devDependencies": {},
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/duizendstra/gcp-api-backoff.git"
+    },
+    "keywords": [
+        "google",
+        "api",
+        "backoff"
+    ],
+    "author": "Jasper Duizendstra <jasper@duizendstra.com> (www.duizendstra.com)",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/duizendstra/gcp-api-backoff/issues"
+    },
+    "homepage": "https://github.com/duizendstra/gcp-api-backoff#readme"
+}
