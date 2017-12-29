@@ -3,9 +3,6 @@ function gcpApiBackoff(specs) {
     // the return function
     let backoff;
 
-    // start witn zero retries
-    let retryCount = 0;
-
     // default 5 retries
     let maxRetries = specs.maxRetries || 5;
 
@@ -13,89 +10,71 @@ function gcpApiBackoff(specs) {
     let baseWaitTime = specs.baseWaitTime || 500;
 
     // set the recovery function
-    if (specs.isCanRecover !== undefined && typeof specs.isCanRecover !== "function") {
-        throw new Error("Provide a function for the isCanRecover in the specificaton");
-    }
     let isCanRecover = specs.isCanRecover;
 
     // set the cannot recover event
-    if (specs.onCannotRecover !== undefined && typeof specs.onCannotRecover !== "function") {
-        throw new Error("Provide a function for the onCannotRecover in the specificaton");
-    }
     let onCannotRecover = specs.onCannotRecover;
 
     // set the retry event
-    if (specs.onRetry !== undefined && typeof specs.onRetry !== "function") {
-        throw new Error("Provide a function for the onRetry in the specificaton");
-    }
     let onRetry = specs.onRetry;
 
     // set the maximum retries reached
-    if (specs.onMaxRetriesReached !== undefined && typeof specs.onMaxRetriesReached !== "function") {
-        throw new Error("Provide a function for the onMaxRetriesReached in the specificaton");
-    }
-    let onMaxRetriesReached = specs.onRetry;
+    let onMaxRetriesReached = specs.onMaxRetriesReached;
 
-    // if the proise resolves, return the promise as is
-    let handleSuccess = function (promise) {
-        return promise;
+    const wait = function (ms) {
+        return new Promise(function (resolve) {
+            setTimeout(resolve, ms);
+        });
     };
 
-    // if the promise rejects, handle the rejection
-    let handleError = function (promise) {
-        return function (err) {
+    backoff = function (operation, retryCount) {
+        return new Promise(function (resolve, reject) {
+            retryCount = retryCount || 0;
+            return operation()
+                .then(resolve)
+                .catch(function (err) {
 
-            // check for the recovery if specified
-            if (typeof specs.isCanRecover === "function") {
+                    // check for the recovery if specified
+                    if (typeof isCanRecover === "function") {
 
-                // execute the recovery check if available
-                if (isCanRecover && isCanRecover(err) === false) {
+                        // execute the recovery check if available
+                        if (isCanRecover && isCanRecover(err) === false) {
 
-                    // execute the cannot recover event if available
-                    if (onCannotRecover !== undefined) {
-                        onCannotRecover(err);
+                            // execute the cannot recover event if available
+                            if (typeof onCannotRecover === "function") {
+                                onCannotRecover(err);
+                            }
+                            return reject(err);
+                        }
                     }
-                    return promise;
-                }
-            }
 
-            // return the promise if the maximum retries have been reached
-            if (retryCount >= maxRetries) {
-                if (onMaxRetriesReached !== undefined) {
-                    onMaxRetriesReached({
-                        error: err,
-                        retryCount: retryCount
-                    });
-                }
-                return promise;
-            }
+                    if (retryCount < maxRetries) {
+                        retryCount += 1;
+                        let waitTime = (Math.pow(2, retryCount) * baseWaitTime) + (Math.round(Math.random() * baseWaitTime));
 
-            // increase the retry counter
-            retryCount += 1;
+                        if (typeof specs.onRetry === "function") {
+                            onRetry({
+                                error: err,
+                                retryCount: retryCount,
+                                waitTime: waitTime
+                            });
+                        }
 
-            // calculate the time to wait
-            let waitTime = (Math.pow(2, retryCount) * baseWaitTime) + (Math.round(Math.random() * baseWaitTime));
-
-            // execute the retry event if available
-            if (onRetry !== undefined) {
-                onRetry({
-                    error: err,
-                    retryCount: retryCount,
-                    waitTime: waitTime
+                        return wait(waitTime)
+                            .then(backoff.bind(null, operation, retryCount))
+                            .then(resolve)
+                            .catch(reject);
+                    }
+                    // return the promise if the maximum retries have been reached
+                    if (typeof onMaxRetriesReached === "function") {
+                        onMaxRetriesReached({
+                            error: err,
+                            retryCount: retryCount
+                        });
+                    }
+                    return reject(err);
                 });
-            }
-
-            // execute the backoff
-            setTimeout(function () {
-                return backoff(promise);
-            }, waitTime);
-        };
-    };
-
-    backoff = function (promise) {
-        return promise()
-            .then(handleSuccess)
-            .catch(handleError(promise));
+        });
     };
 
     return {

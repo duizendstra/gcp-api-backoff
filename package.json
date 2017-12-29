@@ -1,6 +1,6 @@
 {
     "name": "gcp-api-backoff",
-    "version": "0.1.0",
+    "version": "0.1.5",
     "description": "No dependencies back-off for the Google Cloud Platform ",
     "main": "index.js",
     "dependencies": {},
